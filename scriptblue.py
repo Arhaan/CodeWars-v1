@@ -44,8 +44,8 @@ def move(robot, motion=-1):
         else:
                 n = motion
         
+        # print(n)
         ActBase.last_move[id] = n
-        print(n)
         return n
 
         
@@ -55,6 +55,7 @@ def move_to(robot, sx, sy):
         """
         x, y = robot.GetPosition()
         # print(f"{x=}, {y=}, {sx=}, {sy=}")
+
         if x < sx:
                 return move(robot, 2)
         if x > sx:
@@ -66,10 +67,19 @@ def move_to(robot, sx, sy):
                 
                 return move(robot, 1)
 
-def move_to_home(robot):
-        print(f"moving {robot}")
+
+def protect_home(robot, exact=False):
+        """
+        Makes robot move towards home, if exact=false, they'll dance around home, else reach exactly home
+        """
+        # print(f"moving {robot}")
         # breakpoint()
-        return move_to(robot, ActBase.posofbase[0], ActBase.posofbase[1])
+        basex = ActBase.posofbase[0]
+        basey = ActBase.posofbase[1]
+        x,y = robot.GetPosition()
+        if abs(x-basex) <= 1 and abs(y-basey) <= 1 and not exact:
+                return move(robot)
+        return move_to(robot, basex, basey)
 
 def spread(robot):
         if(ActBase.timeframe <= 200):
@@ -86,7 +96,41 @@ def spread(robot):
                         return move(robot, 2)
                 else:
                         return move(robot)
-        return move(robot)      
+        return move(robot)  # changed from move(robot, 0)
+        
+        
+def edge_collect(robot):
+        x, y = robot.GetPosition()
+        z, w = ActBase.posofbase
+        if z > 19 and w > 19:
+                if x < 32:
+                        return move(robot, 2)
+                if y < 32:
+                        return move(robot, 3)
+                else:
+                        return move_to(robot, z, w)                                
+        if z > 19 and w <= 19:
+                if x < 32:
+                        return move(robot, 2)
+                if y > 7:
+                        return move(robot, 1)
+                else:
+                        return move_to(robot, z, w)
+        if z <= 19 and w > 19:
+                if x > 7:
+                        return move(robot, 4)
+                if y < 32:
+                        return move(robot, 3)
+                else:
+                        return move_to(robot, z, w)
+        if z <= 19 and w <= 19:
+                if x > 7:
+                        return move(robot, 4)
+                if y > 7:
+                        return move(robot, 1)
+                else:
+                        return move_to(robot, z, w)
+        
 
 def hilbertmove(robot, quadrant=1):
         x, y = robot.GetPosition()
@@ -104,8 +148,8 @@ def hilbertmove(robot, quadrant=1):
         if quadrant == 0:
                 relative_x, relative_y = x-z, y-w
                 listofmoves = [0, 3, 2, 1, 4]
-        # print(f"{relative_x=}, {relative_y=}")
-        if (relative_x >0 and relative_y>0):
+        
+        if (relative_x > 0 and relative_y > 0):
                 if (relative_x%2 != 0 and relative_x >= relative_y):
                         return move(robot, listofmoves[3])
                 elif (relative_x %2 == 0 and relative_x > relative_y):
@@ -125,114 +169,18 @@ def hilbertmove(robot, quadrant=1):
         elif (relative_x == 0 and relative_y == 0):
                 return move(robot, listofmoves[1])
         else:
+                print(f"{relative_x=}, {relative_y=}")
                 print(robot.GetInitialSignal())
-                return move(robot, listofmoves[0])                            
+                print(f"{x=} {y=}")
+                print(f"{z=} {w=}")
+                return move(robot, listofmoves[0])    # TODO: Change later                        
 
-
-def act_random_robot(robot):
-        """
-        From the sample script on Notion
-        """
-        up = robot.investigate_up()
-        down = robot.investigate_down()
-        left = robot.investigate_left()
-        right = robot.investigate_right()
-        x,y = robot.GetPosition()
-        elixir = robot.GetElixir()
-        virus = 500
-        # print(elixir)
-        robot.setSignal('')
-        if up == "enemy" and robot.GetVirus() > 1000:
-                robot.DeployVirus(virus)
-        elif up == "enemy-base":
-                if x < 10:
-                        msg_x = '0' + str(x)
-                else: 
-                        msg_x = str(x)
-                if y-1 < 10:
-                        msg_y = '0' + str(y-1)
-                else:
-                        msg_y = str(y-1)
-                msg = "base" + msg_x + msg_y
-                robot.setSignal(msg)
-                if robot.GetVirus() > 500:
-                        robot.DeployVirus(500)
-        if down == "enemy" and robot.GetVirus() > 1000:
-                robot.DeployVirus(virus)
-        elif down == "enemy-base":
-                
-                if x < 10:
-                        msg_x = '0' + str(x)
-                else: 
-                        msg_x = str(x)
-                if y+1 < 10:
-                        msg_y = '0' + str(y+1)
-                else:
-                        msg_y = str(y+1)
-                msg = "base" + msg_x + msg_y
-                robot.setSignal(msg)
-                if robot.GetVirus() > 500:
-                        robot.DeployVirus(500)
-        
-        if left == "enemy" and robot.GetVirus() > 1000:
-                robot.DeployVirus(virus)
-        elif left == "enemy-base":
-                if x - 1 < 10:
-                        msg_x = '0' + str(x-1)
-                else: 
-                        msg_x = str(x-1)
-                if y < 10:
-                        msg_y = '0' + str(y)
-                else:
-                        msg_y = str(y)
-                msg = "base" + msg_x + msg_y
-                robot.setSignal(msg)
-                if robot.GetVirus() > 500:
-                        robot.DeployVirus(500)
-                
-        if right == "enemy" and robot.GetVirus() > 1000:
-                robot.DeployVirus(virus)
-        elif right == "enemy-base":
-                x,y = robot.GetPosition()
-                if x+1 < 10:
-                        msg_x = '0' + str(x+1)
-                else: 
-                        msg_x = str(x+1)
-                if y < 10:
-                        msg_y = '0' + str(y)
-                else:
-                        msg_y = str(y)
-                msg = "base" + msg_x + msg_y
-                robot.setSignal(msg)
-                if robot.GetVirus() > 500:
-                        robot.DeployVirus(500)
-        
-
-        
-        
-        if len(robot.GetCurrentBaseSignal()) > 0:
-                s = robot.GetCurrentBaseSignal()[4:]
-                sx = int(s[0:2])
-                sy = int(s[2:4])
-                dist = abs(sx-x) + abs(sy-y)
-                if dist==1:
-                        robot.DeployVirus(robot.GetVirus()*0.75)
-                        return 0
-                if x < sx:
-                        return 2
-                if x > sx:
-                        return 4
-                if y < sy :
-                        return 3
-                if y > sy:
-                        return 1
-        else:
-                return move(robot)    
-
-def give_instruction_wall(n):
+def give_instruction_wall(robot):
     """
     Gives instructions to each of the wall's robots to build wall
     """
+    
+    n = int(robot.GetInitialSignal()[1:3]) 
     if (n == 1):
         return [1,1,1,0]
     if (n == 2):
@@ -287,11 +235,10 @@ def give_instruction_es(n):
         return [1,]*2
 
 
-
 def reach_enemy_base(robot):
         base_sig = robot.GetCurrentBaseSignal()
         x, y = robot.GetPosition()
-        print(robot.GetVirus())
+        # print(robot.GetVirus())
         if robot.GetVirus() < 100:
                 move(robot)
         if len(base_sig)>4:
@@ -300,7 +247,7 @@ def reach_enemy_base(robot):
 
                         sx = int(s[0:2])
                         sy = int(s[2:4])
-                        print(f"{sx=} {sy=}")
+                        # print(f"{sx=} {sy=}")
                         dist = abs(sx-x) + abs(sy-y)
                         if dist == 1:
                                 robot.DeployVirus(robot.GetVirus()*0.75)
@@ -310,8 +257,9 @@ def reach_enemy_base(robot):
 
 def ActRobot(robot):
     role=robot.GetInitialSignal()[0]
-    print(role)
+#     print(role)
     timeframe = ActBase.timeframe
+    walltimeframe = ActBase.walltimeframe
     up = robot.investigate_up()
     down = robot.investigate_down()
     left = robot.investigate_left()
@@ -333,18 +281,18 @@ def ActRobot(robot):
                     enemy_found = True
             if len(base_sig) == 9 and base_sig[8] == 'H':
                     base_attacked = True
-                    print("Base Attacked")
-#     if (role=='C'):
-#         if base_attacked:
-#                 print("Moving Home")
-#                 return move_to_home(robot)        
+                #     print("Base Attacked")
+    if (role=='C' or role == 'W'):
+        if base_attacked:
+                return protect_home(robot)        
     if role == 'W':
         virus = 800
     else:
         virus = 500
     virus = min(virus, robot.GetVirus())
-    if robot.GetVirus() < 100:
-        return move(robot)
+    if timeframe>200:
+        if robot.GetVirus() < 100:
+                return move(robot)
         
     if up == "enemy" and robot.GetVirus() > 1000:
         robot.DeployVirus(virus)
@@ -477,28 +425,29 @@ def ActRobot(robot):
             robot.DeployVirus(virus)
 
     if(role == 'W'):
-            
-        if enemy_found and len(robot.GetCurrentBaseSignal()) <= 8:
+        if enemy_found and not base_attacked:
             return reach_enemy_base(robot)
-        
+        if ActBase.walltimeframe < 0:
+            return protect_home(robot, exact=True) # Move exactly to home
         n = int(robot.GetInitialSignal()[1:3]) 
-        instructions = give_instruction_wall(n)
-        if (timeframe <= len(instructions)-1) :
-            return move(robot, instructions[timeframe])
-        elif(timeframe <= 120):
+        
+        instructions = give_instruction_wall(robot)
+        if (walltimeframe <= len(instructions)-1) :
+            return move(robot, instructions[walltimeframe])
+        elif(walltimeframe <= 120):
                 return hilbertmove(robot,n%4)
-        elif(timeframe <= 145): 
+        elif(walltimeframe <= 145): 
             return move_to(robot, basex, basey)
-        elif(timeframe - 145 <= len(instructions)):
-             return move(robot, instructions[timeframe - 146])
-        elif(timeframe == 146 + len(instructions)):
+        elif(walltimeframe - 145 <= len(instructions)):
+             return move(robot, instructions[walltimeframe - 146])
+        elif(walltimeframe == 146 + len(instructions)):
                 return move(robot, 4)
         else:
              list_of_moves=[1,2,2,3,3,4,4,1]
-             return move(robot, list_of_moves[(timeframe-146 - len(instructions) - 1)%8])  
+             return move(robot, list_of_moves[(walltimeframe-146 - len(instructions) - 1)%8])  
 
       
-
+#     if(role =)    
     if(role == 'C' and int(robot.GetInitialSignal()[2]) in range(3)):
 
         x,y = robot.GetPosition()
@@ -546,7 +495,35 @@ def ActRobot(robot):
         # TODO: Fine tune
         return move(robot, choices([instructions[timeframe%2], 1, 2, 3, 4], weights=[5,0.25, 0.25, 0.25, 0.25])[0]) 
 
-    return move(robot)
+
+    if(role == 'S'):
+        f,r,l,b=4,1,3,2
+        n = int(robot.GetInitialSignal()[1:3]) 
+        if (n == 1):instructions=[f,0]
+        if (n == 2):instructions= [f,f]
+        if (n == 3):instructions= [f,r]
+        if (n == 0):instructions= [f,l]
+        if (bcord[0]>cx/2-2) and (bcord[0]<cx/2+2):
+            r,l=2,4
+            if bcord[1]>cy/2:
+                f,b=1,3
+            else:
+                f,b=3,1
+        elif (bcord[0]>cx/2):
+                f,b=4,2
+        else :
+                f,b=2,4
+        if enemy_found:
+            return reach_enemy_base(robot)
+        if timeframe<3:
+                instructions[timeframe-1]
+        elif timeframe<140:
+                if timeframe % 10<5:
+                        instructions = f
+                else:
+                        instructions = b
+
+    return move(robot,instructions)
             
 
 def ActBase(base):
@@ -555,7 +532,7 @@ def ActBase(base):
 
     '''
     ActBase.timeframe+=1
-
+    ActBase.walltimeframe+=1
     up = base.investigate_up()
     down = base.investigate_down()
     left = base.investigate_left()
@@ -565,21 +542,34 @@ def ActBase(base):
     sw=base.investigate_sw()
     se=base.investigate_se()
 
-    wall = True
+    # which robots are made
+    wall = False
     enemy_scout = True
-    resource = True
+    resource = False
+    sidewall = False
 
     # Kill enemies if they are near
     if  'enemy' in [up,down,left,right,nw,ne,sw,se]:
+            ActBase.unattacked_for = 0
             l = base.GetYourSignal() 
             if l == '':
                 base.SetYourSignal("XXXXXXXXH")
             elif len(l) == 8:
                 if l[0:4] == 'base':
                         base.SetYourSignal(l+'H')
+                        
             # TODO: Edit if you make a new signal
             base.DeployVirus(min(1000, base.GetVirus()))
+    else:
+            ActBase.unattacked_for += 1
+            if ActBase.unattacked_for >= threshold_unattacked_for and len(base.GetYourSignal()) > 8 and base.GetYourSignal()[8] == 'H':
+                    ActBase.walltimeframe = -5
+                    old_sig = base.GetYourSignal()
+                    new_sig = old_sig[0:8] + 'S' + old_sig[9:]
+                    base.SetYourSignal(new_sig)
+                    
 
+                    
     #print(ActBase.timeframe)
 
     #Dimensions of Canvas
@@ -615,6 +605,12 @@ def ActBase(base):
             ActBase.last_move[f'E0{i}'] = randint(0,4)  
             ActBase.Emotion[f'E0{i}'] = i
 
+#     Sidewall
+    if (ActBase.timeframe == 0) and sidewall: 
+        for i in range(4):
+            base.create_robot(f'S0{i}')    
+            ActBase.last_move[f'S0{i}'] = randint(0,4)
+
 
     # check if a robot found enemy base
     L = base.GetListOfSignals()
@@ -630,6 +626,9 @@ def ActBase(base):
     return
 
 ActBase.timeframe=-1
+ActBase.walltimeframe=-1
 ActBase.last_move = {}
 ActBase.posofbase = (29, 19) # Is reset above
 ActBase.Emotion = {}
+threshold_unattacked_for = 30
+ActBase.unattacked_for = threshold_unattacked_for
